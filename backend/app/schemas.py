@@ -140,3 +140,32 @@ class ReorderRequest(BaseModel):
     """Ordered todo ids; each gets `position` = its index."""
 
     ids: list[int] = Field(min_length=1)
+
+
+# ---------- Stats (task accomplishments) ----------
+
+
+class StatsBucket(BaseModel):
+    """A labelled slice of tasks (e.g. one list, one priority, one day)."""
+
+    label: str
+    total: int
+    completed: int
+
+
+class StatsOut(BaseModel):
+    """An analysis of the tasks the signed-in user can see."""
+
+    total: int
+    completed: int
+    open: int
+    overdue: int
+    completion_rate: float  # completed / total, 0.0–1.0
+    completed_today: int
+    completed_this_week: int
+    completed_on_time: int
+    completed_late: int
+    avg_completion_days: float | None  # None when nothing is completed yet
+    by_priority: list[StatsBucket]
+    by_list: list[StatsBucket]
+    last_7_days: list[StatsBucket]  # oldest → newest, ending today
