@@ -19,6 +19,7 @@ A full-stack to-do application:
 - **Filters** — All / Ongoing / Late / Done, with live counts.
 - **Alerts** — a bell in the header shows a badge for overdue and due-today tasks; the panel lists Overdue, Due today, and Coming up. Clicking an alert jumps to its list and highlights the task. A toast warns you on load when something needs attention.
 - **Late detection** — overdue tasks get red chips; tasks finished after their deadline get a *"finished late"* tag (completion time is tracked).
+- **Stats panel** — a **Stats** entry in the sidebar shows your accomplishments at a glance: completion rate, done today / this week, on-time vs late, average time-to-complete, a 7-day trend, and breakdowns by priority and list. Scope it to a single list or view every list.
 - Add, rename (double-click or ✏️), complete, and delete tasks
 - Priorities (low / medium / high) with color-coded badges
 - Clear completed (per list)

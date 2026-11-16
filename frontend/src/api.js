@@ -97,4 +97,8 @@ export const api = {
     }),
   reorderTodos: (ids) =>
     request('/todos/reorder', { method: 'POST', body: JSON.stringify({ ids }) }),
+
+  // Stats
+  stats: (projectId) =>
+    request(`/stats${projectId ? `?project_id=${projectId}` : ''}`),
 }

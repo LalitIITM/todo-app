@@ -11,11 +11,14 @@ const props = defineProps({
   // "Assigned to me" cross-list view.
   assignedCount: { type: Number, default: 0 },
   assignedSelected: { type: Boolean, default: false },
+  // Cross-list stats view.
+  statsSelected: { type: Boolean, default: false },
 })
 
 const emit = defineEmits([
   'select',
   'select-assigned',
+  'select-stats',
   'create',
   'rename',
   'remove',
@@ -117,6 +120,15 @@ function onDrop(project) {
         <span class="assigned-icon">📌</span>
         <span class="project-name">Assigned to me</span>
         <span v-if="assignedCount" class="project-count">{{ assignedCount }}</span>
+      </li>
+      <li
+        class="project-item assigned-item"
+        :class="{ selected: statsSelected }"
+        title="Your task accomplishments at a glance"
+        @click="emit('select-stats')"
+      >
+        <span class="assigned-icon">📊</span>
+        <span class="project-name">Stats</span>
       </li>
     </ul>
 
