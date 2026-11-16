@@ -7,6 +7,7 @@ import AlertsBell from './components/AlertsBell.vue'
 import AuthView from './components/AuthView.vue'
 import ProjectSidebar from './components/ProjectSidebar.vue'
 import ShareDialog from './components/ShareDialog.vue'
+import StatsPanel from './components/StatsPanel.vue'
 import ThemeToggle from './components/ThemeToggle.vue'
 import TodoFilters from './components/TodoFilters.vue'
 import TodoInput from './components/TodoInput.vue'
@@ -20,6 +21,7 @@ const projects = ref([])
 const todos = ref([])
 const selectedProjectId = ref(Number(localStorage.getItem('selectedProject')) || null)
 const assignedOnly = ref(false)
+const statsOnly = ref(false)
 const filter = ref('all')
 const loading = ref(true)
 const error = ref('')
@@ -253,6 +255,7 @@ const clearCompleted = () => run(() => api.clearCompleted(selectedProjectId.valu
 
 function selectProject(id) {
   assignedOnly.value = false
+  statsOnly.value = false
   selectedProjectId.value = id
   filter.value = 'all'
   localStorage.setItem('selectedProject', String(id))
@@ -260,6 +263,13 @@ function selectProject(id) {
 
 function selectAssigned() {
   assignedOnly.value = true
+  statsOnly.value = false
+  filter.value = 'all'
+}
+
+function selectStats() {
+  statsOnly.value = true
+  assignedOnly.value = false
   filter.value = 'all'
 }
 
@@ -443,8 +453,10 @@ function showToast(msg, type = 'info') {
       :dragging-from-project-id="dragging?.project_id ?? null"
       :assigned-count="assignedCount"
       :assigned-selected="assignedOnly"
+      :stats-selected="statsOnly"
       @select="selectProject"
       @select-assigned="selectAssigned"
+      @select-stats="selectStats"
       @create="createProject"
       @rename="renameProject"
       @remove="removeProject"
@@ -458,13 +470,21 @@ function showToast(msg, type = 'info') {
       <header class="app-header">
         <div>
           <h1 class="app-title">
-            {{ assignedOnly ? '📌 Assigned to me' : (currentProject?.name ?? 'Tasks') }}
+            {{
+              statsOnly
+                ? '📊 Stats'
+                : assignedOnly
+                  ? '📌 Assigned to me'
+                  : (currentProject?.name ?? 'Tasks')
+            }}
             <span
-              v-if="!assignedOnly && currentProject?.is_shared"
+              v-if="!statsOnly && !assignedOnly && currentProject?.is_shared"
               class="shared-pill"
             >👥 shared</span>
           </h1>
-          <p class="app-subtitle">{{ subtitle }}</p>
+          <p class="app-subtitle">
+            {{ statsOnly ? 'Your accomplishments at a glance' : subtitle }}
+          </p>
         </div>
         <div class="header-actions">
           <AlertsBell
@@ -480,15 +500,17 @@ function showToast(msg, type = 'info') {
 
       <div v-if="error" class="error-banner" role="alert">{{ error }}</div>
 
-      <TodoInput v-if="!assignedOnly" @add="addTodo" />
-      <TodoFilters v-model="filter" :counts="counts" />
+      <StatsPanel v-if="statsOnly" :projects="projects" />
 
-      <div v-if="loading" aria-label="Loading tasks">
+      <TodoInput v-if="!statsOnly && !assignedOnly" @add="addTodo" />
+      <TodoFilters v-if="!statsOnly" v-model="filter" :counts="counts" />
+
+      <div v-if="!statsOnly && loading" aria-label="Loading tasks">
         <div v-for="n in 3" :key="n" class="skeleton"></div>
       </div>
 
       <TransitionGroup
-        v-else-if="visible.length"
+        v-else-if="!statsOnly && visible.length"
         name="list"
         tag="ul"
         class="todo-list"
@@ -520,14 +542,14 @@ function showToast(msg, type = 'info') {
         />
       </TransitionGroup>
 
-      <div v-else class="empty-state">
+      <div v-else-if="!statsOnly" class="empty-state">
         <span class="empty-icon">
           {{ filter === 'done' ? '🗂️' : filter === 'late' ? '⏰' : '🌱' }}
         </span>
         <p>{{ emptyMessage }}</p>
       </div>
 
-      <footer v-if="!assignedOnly && currentTodos.length" class="list-footer">
+      <footer v-if="!statsOnly && !assignedOnly && currentTodos.length" class="list-footer">
         <span>
           {{ counts.done }} of {{ counts.all }} completed
           <template v-if="counts.done === counts.all">🎉</template>
