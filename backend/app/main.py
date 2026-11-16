@@ -917,6 +917,55 @@ def task_stats(
             )
         )
 
+    # Current streak: consecutive days with at least one completion, counting
+    # back from today. If nothing was completed today yet, the streak can still
+    # be alive from yesterday.
+    completion_days = {done for t in completed if (done := completed_on(t))}
+    current_streak = 0
+    cursor = today
+    if cursor not in completion_days:
+        cursor = today - timedelta(days=1)
+    while cursor in completion_days:
+        current_streak += 1
+        cursor -= timedelta(days=1)
+
+    # Group tasks by assignee (including an "Unassigned" group).
+    groups: dict[int | None, list[models.Todo]] = {}
+    for todo in todos:
+        groups.setdefault(todo.assignee_id, []).append(todo)
+
+    assignee_ids = [uid for uid in groups if uid is not None]
+    people = (
+        {
+            u.id: u
+            for u in db.scalars(
+                select(models.User).where(models.User.id.in_(assignee_ids))
+            )
+        }
+        if assignee_ids
+        else {}
+    )
+
+    by_assignee = []
+    for uid, group in groups.items():
+        person = people.get(uid) if uid is not None else None
+        if uid is None:
+            label, email = "Unassigned", None
+        elif person is not None:
+            label, email = (person.name or person.email), person.email
+        else:
+            label, email = f"user {uid}", None
+        by_assignee.append(
+            schemas.AssigneeStats(
+                user_id=uid,
+                label=label,
+                email=email,
+                total=len(group),
+                completed=sum(1 for t in group if t.completed),
+            )
+        )
+    by_assignee.sort(key=lambda b: (-b.total, b.label.lower()))
+
     total = len(todos)
     return schemas.StatsOut(
         total=total,
@@ -933,7 +982,9 @@ def task_stats(
         completed_on_time=on_time,
         completed_late=late,
         avg_completion_days=(sum(durations) / len(durations)) if durations else None,
+        current_streak=current_streak,
         by_priority=by_priority,
         by_list=by_list,
+        by_assignee=by_assignee,
         last_7_days=last_7_days,
     )

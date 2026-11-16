@@ -153,6 +153,16 @@ class StatsBucket(BaseModel):
     completed: int
 
 
+class AssigneeStats(BaseModel):
+    """Completion breakdown for one assignee (or the unassigned group)."""
+
+    user_id: int | None
+    label: str  # display name when known, otherwise the email
+    email: str | None
+    total: int
+    completed: int
+
+
 class StatsOut(BaseModel):
     """An analysis of the tasks the signed-in user can see."""
 
@@ -166,6 +176,8 @@ class StatsOut(BaseModel):
     completed_on_time: int
     completed_late: int
     avg_completion_days: float | None  # None when nothing is completed yet
+    current_streak: int  # consecutive days (ending today) with a completion
     by_priority: list[StatsBucket]
     by_list: list[StatsBucket]
+    by_assignee: list[AssigneeStats]
     last_7_days: list[StatsBucket]  # oldest → newest, ending today
