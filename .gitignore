@@ -1,0 +1,29 @@
+# ---- Python / backend ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# ---- Node / frontend ----
+node_modules/
+dist/
+npm-debug.log*
+yarn-error.log*
+
+# ---- Databases ----
+*.db
+*.sqlite
+*.sqlite3
+
+# ---- Environment / secrets ----
+.env
+.env.*
+*.local
+
+# ---- Editors / OS ----
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

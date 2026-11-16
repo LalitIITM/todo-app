@@ -1,0 +1,44 @@
+services:
+  backend:
+    build: ./backend
+    container_name: todo-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite:////data/todo.db
+      # Account seeded on first boot so existing data keeps working.
+      - STARTER_EMAIL=you@example.com
+      - STARTER_PASSWORD=changeme123
+      - STARTER_NAME=You
+      # Outgoing mail (Mailpit below catches everything in development).
+      - SMTP_HOST=mailpit
+      - SMTP_PORT=1025
+      - SMTP_FROM=Tasks <no-reply@tasks.local>
+      # Used to build the links inside emails.
+      - APP_BASE_URL=http://localhost:8080
+    volumes:
+      - todo-data:/data
+    depends_on:
+      - mailpit
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: todo-frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # Development mail catcher: SMTP on 1025, web inbox on http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: todo-mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    restart: unless-stopped
+
+volumes:
+  todo-data:
