@@ -121,6 +121,7 @@ All `/api/todos` and `/api/projects` endpoints require an `Authorization: Bearer
 | `POST`   | `/api/todos/reorder`             | Save a new order (`{ "ids": [3, 1, 2] }`)          |
 | `DELETE` | `/api/todos/{id}`                | Delete a todo                                      |
 | `DELETE` | `/api/todos`                     | Delete completed todos (`?project_id=`)            |
+| `GET`    | `/api/stats`                     | Task-accomplishments analysis (`?project_id=` optional): totals, completion rate, on-time vs late, per-priority/per-list breakdowns, and a 7-day trend |
 | `GET`    | `/api/health`                    | Health check                                       |
 
 ## Project structure

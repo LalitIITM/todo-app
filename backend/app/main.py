@@ -1,6 +1,6 @@
 import os
 from contextlib import asynccontextmanager
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Response, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -830,3 +830,110 @@ def clear_completed(
     )
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# ---------- Stats (task accomplishments) ----------
+
+
+def _aware(value: datetime) -> datetime:
+    """SQLite hands back naive datetimes; treat them as UTC."""
+    return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+
+
+@app.get("/api/stats", response_model=schemas.StatsOut)
+def task_stats(
+    project_id: int | None = None,
+    user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Analyse the tasks the user can see: completion, timing, and trends."""
+    projects = accessible_projects(db, user)
+    if project_id is not None:
+        projects = [p for p in projects if p.id == project_id]
+    ids = [p.id for p in projects]
+
+    todos = (
+        list(db.scalars(select(models.Todo).where(models.Todo.project_id.in_(ids))))
+        if ids
+        else []
+    )
+
+    today = datetime.now(timezone.utc).date()
+    week_ago = today - timedelta(days=6)
+
+    completed = [t for t in todos if t.completed]
+    open_todos = [t for t in todos if not t.completed]
+    overdue = [t for t in open_todos if t.due_date is not None and t.due_date < today]
+
+    def completed_on(todo: models.Todo) -> date | None:
+        return _aware(todo.completed_at).date() if todo.completed_at else None
+
+    on_time = 0
+    late = 0
+    durations: list[float] = []
+    for todo in completed:
+        done = completed_on(todo)
+        if todo.due_date is not None and done is not None:
+            if done <= todo.due_date:
+                on_time += 1
+            else:
+                late += 1
+        if todo.completed_at is not None:
+            span = _aware(todo.completed_at) - _aware(todo.created_at)
+            durations.append(span.total_seconds() / 86400)
+
+    by_priority = [
+        schemas.StatsBucket(
+            label=level,
+            total=sum(1 for t in todos if t.priority == level),
+            completed=sum(1 for t in todos if t.priority == level and t.completed),
+        )
+        for level in ("high", "medium", "low")
+    ]
+
+    by_list = [
+        schemas.StatsBucket(
+            label=project.name,
+            total=sum(1 for t in todos if t.project_id == project.id),
+            completed=sum(
+                1 for t in todos if t.project_id == project.id and t.completed
+            ),
+        )
+        for project in projects
+    ]
+
+    last_7_days = []
+    for offset in range(7):
+        day = week_ago + timedelta(days=offset)
+        last_7_days.append(
+            schemas.StatsBucket(
+                label=day.isoformat(),
+                total=sum(
+                    1
+                    for t in todos
+                    if t.created_at and _aware(t.created_at).date() == day
+                ),
+                completed=sum(1 for t in completed if completed_on(t) == day),
+            )
+        )
+
+    total = len(todos)
+    return schemas.StatsOut(
+        total=total,
+        completed=len(completed),
+        open=len(open_todos),
+        overdue=len(overdue),
+        completion_rate=(len(completed) / total) if total else 0.0,
+        completed_today=sum(1 for t in completed if completed_on(t) == today),
+        completed_this_week=sum(
+            1
+            for t in completed
+            if (done := completed_on(t)) is not None and week_ago <= done <= today
+        ),
+        completed_on_time=on_time,
+        completed_late=late,
+        avg_completion_days=(sum(durations) / len(durations)) if durations else None,
+        by_priority=by_priority,
+        by_list=by_list,
+        last_7_days=last_7_days,
+    )
